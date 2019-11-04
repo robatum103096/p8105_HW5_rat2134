@@ -12,6 +12,7 @@ library(tidyverse)
 
 # Problem 1
 ```{r}
+#Loading data
 set.seed(10)
 
 iris_with_missing = iris %>% 
@@ -24,12 +25,23 @@ iris_with_missing = iris %>%
 problem_1_function = function(x) {
   
   if (is.numeric(x)) {
-    replace(x, values = mean(x))
+    ifelse(is.na(x), mean(x, na.rm = TRUE), x)
   } else if (is.character(x)){
-    replace(x, values = "virginica")
+    ifelse(is.na(x), "virginica", x)
   }
-
-  View(x)
 }
 ```
+
+```{r}
+#Applying function to each column of 'iris_with_missing' using 'map'
+iris_without_missing = map(iris_with_missing, problem_1_function)
+```
+
+# Problem 2
+```{r}
+#Loading and tidying data
+
+```
+
+
 
