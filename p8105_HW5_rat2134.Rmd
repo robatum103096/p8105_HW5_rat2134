@@ -2,7 +2,7 @@
 title: "p8105_HW5_rat2134"
 author: "Robert Tumasian"
 date: "11/3/2019"
-output: html_document
+output: github_document
 ---
 
 ```{r, message = FALSE}
@@ -78,6 +78,8 @@ Overall, we can see that subjects in the experimental arm have higher observatio
 
 ## Problem 3
 ```{r}
+#Set design elements
+n = 30
 
 ```
 
