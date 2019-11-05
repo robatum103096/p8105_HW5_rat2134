@@ -10,7 +10,8 @@ output: html_document
 library(tidyverse)
 ```
 
-# Problem 1
+# Homework 5
+## Problem 1
 ```{r}
 #Loading data
 set.seed(10)
@@ -29,6 +30,7 @@ problem_1_function = function(x) {
   } else if (is.character(x)){
     ifelse(is.na(x), "virginica", x)
   }
+
 }
 ```
 
@@ -37,11 +39,48 @@ problem_1_function = function(x) {
 iris_without_missing = map(iris_with_missing, problem_1_function)
 ```
 
-# Problem 2
+## Problem 2
+```{r, message = FALSE}
+#Load data
+longitudinal_data = map_df(.x = list.files("./hw5_data"), 
+                            ~ read_csv(str_c("./hw5_data\\", .x)))
+longitudinal_data
+```
+
 ```{r}
-#Loading and tidying data
+#Tidy data
+longitudinal_data_tidy = 
+  longitudinal_data %>%
+    mutate(id = 1:20,
+           arm = c(rep("control", 10), rep("experimental", 10))) %>%
+    pivot_longer(week_1:week_8, 
+                 names_to = "week", 
+                 values_to = "observation") %>%
+    mutate(week = str_replace(string = week,
+                              pattern = ".*_",
+                              replacement = ""))
+```
+
+```{r}
+#Spaghetti plot
+longitudinal_data_tidy %>%
+  ggplot(aes(x = week, y = observation, group = id, color = arm)) +
+  geom_line() +
+  labs(
+    title = "Observations for each subject over time, by arm",
+    x = "Week",
+    y = "Observation",
+    color = "Arm"
+  )
+```
+
+Overall, we can see that subjects in the experimental arm have higher observation values over time compared to subjects in the control arm. At 8 weeks, all subjects in the control group have lower observation values than those in the experimental group.
+
+## Problem 3
+```{r}
 
 ```
+
 
 
 
