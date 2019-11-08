@@ -8,6 +8,7 @@ output: github_document
 ```{r, message = FALSE}
 #Load required packages
 library(tidyverse)
+library(broom)
 ```
 
 # Homework 5
@@ -31,13 +32,18 @@ problem_1_function = function(x) {
     ifelse(is.na(x), "virginica", x)
   }
 
+  x
+  
 }
 ```
 
 ```{r}
 #Applying function to each column of 'iris_with_missing' using 'map'
 iris_without_missing = map(iris_with_missing, problem_1_function)
+
+is.na(iris_without_missing)
 ```
+There are no longer any missing values in the columns after applying `problem_1_function` to the `iris_with_missing` dataset.
 
 ## Problem 2
 ```{r, message = FALSE}
@@ -59,6 +65,9 @@ longitudinal_data_tidy =
     mutate(week = str_replace(string = week,
                               pattern = ".*_",
                               replacement = ""))
+
+#Snapshot of data after tidying
+head(longitudinal_data_tidy, 20)
 ```
 
 ```{r}
@@ -67,22 +76,87 @@ longitudinal_data_tidy %>%
   ggplot(aes(x = week, y = observation, group = id, color = arm)) +
   geom_line() +
   labs(
-    title = "Observations for each subject over time, by arm",
+    title = "Observations for subjects in both arms over time",
     x = "Week",
     y = "Observation",
     color = "Arm"
   )
 ```
 
-Overall, we can see that subjects in the experimental arm have higher observation values over time compared to subjects in the control arm. At 8 weeks, all subjects in the control group have lower observation values than those in the experimental group.
+We can see that subjects in the experimental arm tend to have higher observation values over time compared to subjects in the control arm. At 8 weeks, all subjects in the control group have lower observation values than those in the experimental group.
 
 ## Problem 3
 ```{r}
-#Set design elements
-n = 30
+set.seed(142)
 
+regression_simulation = function(n = 30, beta_0 = 2, beta_1) {
+  
+  simulation_data = tibble(
+    x = rnorm(n, mean = 0, sd = 1),
+    y = beta_0 + beta_1 * x + rnorm(n, 0, sqrt(50))
+  )
+  
+  ls_fit = lm(y ~ x, data = simulation_data)
+
+  broom::tidy(ls_fit)[2, c(2,5)]
+
+}
 ```
 
+```{r}
+#Generating 10,000 datasets from simple linear model for beta_1 = 0
+simulation_results = 
+  rerun(10000, regression_simulation(30, 2, 0)) %>% 
+  bind_rows()
+```
 
+```{r}
+#Repeat dataset generation using beta_1 = 1,2,3,4,5,6
+simulation_results_2 = 
+  tibble(beta_1 = c(1:6)) %>% 
+  mutate(
+    output_lists = map(.x = beta_1, 
+                       ~rerun(10000, regression_simulation(beta_1 = .x))),
+    estimate_dfs = map(output_lists, bind_rows)) %>% 
+  select(-output_lists) %>% 
+  unnest(estimate_dfs)
+```
 
+```{r}
+#Plot showing the proportion of times the null was rejected
+simulation_results_2 %>%
+  group_by(beta_1) %>%
+  summarize(sig_p_values = length(which(p.value < 0.05))) %>%
+  ggplot(aes(x = beta_1, y = sig_p_values/10000)) +
+  geom_bar(stat = "identity") +
+  scale_x_discrete(limit = c("1", "2", "3", "4", "5", "6")) +
+  labs(
+    title = "Proportion of times the null was rejected with increasing effect size",
+    x = "Effect Size",
+    y = "Proportion of times the null was rejected"
+  )
+```
 
+We can see that as effect size increases, the proportion of times the null was rejected, or the power, also increases, suggesting that effect size and power are positively associated.
+
+```{r}
+#Plot showing average estimated effect size vs. true effect size
+simulation_results_2 %>%
+  group_by(beta_1) %>%
+  summarize(avg_beta_1_estimate = mean(estimate),
+            avg_beta_1_estimate_null_rejected = 
+              mean(estimate[which(p.value < 0.05)])) %>%
+  ggplot(aes(x = beta_1)) +
+  geom_line(aes(y = avg_beta_1_estimate, color = "Total"), 
+            size = 1) +
+  geom_line(aes(y = avg_beta_1_estimate_null_rejected, color = "Null Rejected"), 
+            size = 1) +
+  scale_x_discrete(limit = c("1", "2", "3", "4", "5", "6")) +
+  scale_color_discrete(name = "Results") +
+  labs(
+    title = "Average estimated effect size vs. true effect size",
+    x = "True Effect Size",
+    y = "Average Estimated Effect Size")
+```
+
+As the true effect size moves away from zero, the average estimated effect size across tests for which the null was rejected approaches the true effect size. This is because more tests will reject the null as effect size increases. In addition, the average estimated effect size is strictly greater than the true effect size, because the average estimated effect size is calculated using only the effect sizes that are greater than zero.
